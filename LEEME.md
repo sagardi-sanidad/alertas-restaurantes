@@ -1,3 +1,7 @@
+# Corrección rápida del error ALLERGEN_KEYS
+
+Si Aina ya había subido la versión anterior y el selector de restaurantes funciona, **solo debe sustituir `index.html` en la raíz del repositorio `alertas-restaurantes`**. No necesita cambiar `Code.gs`, la hoja de cálculo ni la implementación de Apps Script. La URL de la API que contiene el HTML sigue siendo la misma.
+
 # Corrección de alertas restaurantes
 
 Esta versión parte de la app original de Cadaqués Madrid y mantiene su diseño, su rejilla de iconos, su práctica, su examen y su explorador. Añade la pantalla de selección de restaurante y consulta el Google Sheet al cambiar de local o pulsar Actualizar datos.

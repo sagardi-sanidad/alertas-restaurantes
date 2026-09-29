@@ -422,6 +422,25 @@
 
     <script>
         // Los platos se cargan desde las pestañas del Google Sheet al elegir restaurante.
+        const ALLERGEN_KEYS = [
+            { id: 'Gluten', name: 'Gluten', icon: 'fa-wheat-awn', colorClass: 'color-Gluten', iconColor: 'text-amber-400', bgHover: 'hover:border-amber-400' },
+            { id: 'Crustáceos', name: 'Crustáceos', icon: 'fa-shrimp', colorClass: 'color-Crustáceos', iconColor: 'text-rose-400', bgHover: 'hover:border-rose-400' },
+            { id: 'Huevo', name: 'Huevo', icon: 'fa-egg', colorClass: 'color-Huevo', iconColor: 'text-yellow-400', bgHover: 'hover:border-yellow-400' },
+            { id: 'Pescado', name: 'Pescado', icon: 'fa-fish', colorClass: 'color-Pescado', iconColor: 'text-cyan-400', bgHover: 'hover:border-cyan-400' },
+            { id: 'Cacahuetes', name: 'Cacahuetes', icon: 'fa-cubes-stacked', colorClass: 'color-Cacahuetes', iconColor: 'text-orange-400', bgHover: 'hover:border-orange-400' },
+            { id: 'Soja', name: 'Soja', icon: 'fa-seedling', colorClass: 'color-Soja', iconColor: 'text-emerald-400', bgHover: 'hover:border-emerald-400' },
+            { id: 'Leche', name: 'Leche y deriv.', icon: 'fa-cow', colorClass: 'color-Leche', iconColor: 'text-blue-300', bgHover: 'hover:border-blue-400' },
+            { id: 'Frutos con cáscara', name: 'Frutos cáscara', icon: 'fa-tree', colorClass: 'color-Frutos', iconColor: 'text-amber-600', bgHover: 'hover:border-amber-500' },
+            { id: 'Apio', name: 'Apio', icon: 'fa-carrot', colorClass: 'color-Apio', iconColor: 'text-green-400', bgHover: 'hover:border-green-400' },
+            { id: 'Mostaza', name: 'Mostaza', icon: 'fa-jar', colorClass: 'color-Mostaza', iconColor: 'text-yellow-300', bgHover: 'hover:border-yellow-300' },
+            { id: 'Sésamo', name: 'Sésamo', icon: 'fa-ellipsis', colorClass: 'color-Sésamo', iconColor: 'text-orange-300', bgHover: 'hover:border-orange-300' },
+            { id: 'Ajo', name: 'Ajo', icon: 'fa-bong', colorClass: 'color-Ajo', iconColor: 'text-purple-400', bgHover: 'hover:border-purple-400' },
+            { id: 'Cerdo', name: 'Cerdo', icon: 'fa-bacon', colorClass: 'color-Cerdo', iconColor: 'text-pink-400', bgHover: 'hover:border-pink-400' },
+            { id: 'Sulfitos', name: 'Sulfitos', icon: 'fa-wine-glass', colorClass: 'color-Sulfitos', iconColor: 'text-violet-400', bgHover: 'hover:border-violet-400' },
+            { id: 'Altramuces', name: 'Altramuces', icon: 'fa-circle', colorClass: 'color-Altramuces', iconColor: 'text-lime-400', bgHover: 'hover:border-lime-400' },
+            { id: 'Moluscos', name: 'Moluscos', icon: 'fa-water', colorClass: 'color-Moluscos', iconColor: 'text-teal-400', bgHover: 'hover:border-teal-400' }
+        ];
+
         let DISHES_DATA = [];
 
         let currentPracticeDish = null;

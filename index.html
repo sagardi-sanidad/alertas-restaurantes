@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadaqués Madrid - Formación de Alérgenos 2026</title>
+    <title>Sagardi</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -448,6 +448,7 @@
         let activeTab = 'practice';
 
         // Exam State Variables
+        let examInProgress = false;
         let examQuestions = [];
         let currentExamIndex = 0;
         let examUserAnswers = [];
@@ -487,6 +488,10 @@
         }
 
         function switchTab(tabId) {
+            if (examInProgress && tabId !== 'exam') {
+                alert('NO HAGAS TRAMPAS, ES UN EXAMEN DE TUS CONOCIMIENTOS');
+                return;
+            }
             activeTab = tabId;
             ['practice', 'exam', 'explorer'].forEach(t => {
                 const navBtn = document.getElementById(`nav-${t}`);
@@ -697,7 +702,7 @@
                             <strong class="text-rose-200 font-bold text-base block">Respuesta Incorrecta</strong>
                             ${detailsHTML}
                             <div class="mt-3 pt-2 border-t border-rose-800/60 text-xs text-slate-300">
-                                📌 <strong>Ficha Oficial Cadaqués:</strong> Alérgenos: <span class="text-amber-300 font-semibold">${officialAllergensStr}</span>${officialTracesStr}.
+                                📌 <strong>Ficha oficial:</strong> Alérgenos: <span class="text-amber-300 font-semibold">${officialAllergensStr}</span>${officialTracesStr}.
                                 | Vegano: <strong>${isTrueVegan ? 'SÍ' : 'NO'}</strong> | Vegetariano: <strong>${isTrueVeg ? 'SÍ' : 'NO'}</strong>.
                             </div>
                         </div>
@@ -718,6 +723,7 @@
         }
 
         function startExam() {
+            examInProgress = true;
             document.getElementById('exam-intro').classList.add('hidden');
             document.getElementById('exam-results').classList.add('hidden');
             document.getElementById('exam-active').classList.remove('hidden');
@@ -858,6 +864,7 @@
         }
 
         function finishExam() {
+            examInProgress = false;
             document.getElementById('exam-active').classList.add('hidden');
             document.getElementById('exam-results').classList.remove('hidden');
 
@@ -1114,7 +1121,8 @@
         function escapeHtml(s) {return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
         async function loadCatalog() {
             try { const r=await apiRequest({action:'catalog'});if(!r.ok)throw Error(r.error);
-                catalogData=r.locations;document.getElementById('load-status').textContent='';renderSelector();
+                catalogData=r.locations.map(loc=>loc.id==='KRESALA' ? {...loc,city:'Barcelona'} : loc);
+                document.getElementById('load-status').textContent='';renderSelector();
             } catch(e) {document.getElementById('load-status').textContent='No se han podido cargar los restaurantes: '+e.message;}
         }
         function renderSelector() {
@@ -1167,11 +1175,11 @@
                 document.getElementById('exam-restaurant').textContent=next.name;
                 document.getElementById('explorer-restaurant').textContent=next.name;
                 document.getElementById('dish-count').textContent=DISHES_DATA.length;
-                document.title=next.name+' - Formación de Alérgenos';
+                document.title='Sagardi';
                 setCategories();loadPracticeGrid();practiceStats={correct:0,incorrect:0};
                 document.getElementById('practice-score-correct').textContent='0';
                 document.getElementById('practice-score-incorrect').textContent='0';
-                currentPracticeDish=null;examQuestions=[];examUserAnswers=[];examScore=0;currentExamIndex=0;
+                currentPracticeDish=null;examInProgress=false;examQuestions=[];examUserAnswers=[];examScore=0;currentExamIndex=0;
                 document.getElementById('exam-intro').classList.remove('hidden');
                 document.getElementById('exam-active').classList.add('hidden');
                 document.getElementById('exam-results').classList.add('hidden');

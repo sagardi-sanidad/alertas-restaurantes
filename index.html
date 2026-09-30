@@ -1121,7 +1121,8 @@
         function escapeHtml(s) {return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
         async function loadCatalog() {
             try { const r=await apiRequest({action:'catalog'});if(!r.ok)throw Error(r.error);
-                catalogData=r.locations.map(loc=>loc.id==='KRESALA' ? {...loc,city:'Barcelona'} : loc);
+                catalogData=r.locations.map(loc=>loc.id==='KRESALA' ? {...loc,city:'Barcelona'}
+                    : loc.id==='ORIO' ? {...loc,city:'Madrid y Valencia'} : loc);
                 document.getElementById('load-status').textContent='';renderSelector();
             } catch(e) {document.getElementById('load-status').textContent='No se han podido cargar los restaurantes: '+e.message;}
         }

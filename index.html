@@ -259,6 +259,10 @@
                         <span>10 preguntas interactivas basadas en la ficha del restaurante elegido.</span>
                     </div>
                     <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-clock text-amber-400"></i>
+                        <span>Dispones de 6 minutos. El examen se entregará automáticamente al finalizar el tiempo.</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
                         <i class="fa-solid fa-check text-emerald-400"></i>
                         <span>Selección sobre iconos a color de alérgenos + Libre de Alérgenos + Vegano/Vegetariano.</span>
                     </div>
@@ -277,11 +281,15 @@
             <!-- Active Exam Card -->
             <div id="exam-active" class="hidden glass-panel rounded-2xl p-6 sm:p-8 space-y-6 relative">
                 <!-- Progress Header -->
-                <div class="flex items-center justify-between text-xs font-semibold text-slate-400 border-b border-slate-700 pb-4">
+                <div class="flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-slate-400 border-b border-slate-700 pb-4">
                     <span class="flex items-center space-x-2">
                         <span class="text-sky-400">Pregunta <strong id="exam-q-current" class="text-white text-base">1</strong> de <span id="exam-q-total">10</span></span>
                     </span>
-                    <div class="w-1/3 bg-slate-800 h-2.5 rounded-full overflow-hidden border border-slate-700">
+                    <div id="exam-timer-box" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg border border-emerald-700 bg-emerald-950/50 text-emerald-300" role="timer" aria-live="polite">
+                        <i class="fa-solid fa-clock"></i>
+                        <span id="exam-timer" class="text-lg font-black tabular-nums">06:00</span>
+                    </div>
+                    <div class="w-full sm:w-1/3 bg-slate-800 h-2.5 rounded-full overflow-hidden border border-slate-700">
                         <div id="exam-progress-bar" class="bg-sky-500 h-full w-10 transition-all duration-300"></div>
                     </div>
                 </div>
@@ -458,6 +466,9 @@
         let currentExamIndex = 0;
         let examUserAnswers = [];
         let examScore = 0;
+        const EXAM_DURATION_MS = 6 * 60 * 1000;
+        let examDeadline = 0;
+        let examTimerId = null;
 
         // Explorer State
         let activeDietFilter = null; // 'vegan' | 'veg' | null
@@ -728,6 +739,7 @@
         }
 
         function startExam() {
+            stopExamTimer();
             examInProgress = true;
             document.getElementById('exam-intro').classList.add('hidden');
             document.getElementById('exam-results').classList.add('hidden');
@@ -742,7 +754,65 @@
             examScore = 0;
             document.getElementById('exam-q-total').textContent=examQuestions.length;
 
+            examDeadline = Date.now() + EXAM_DURATION_MS;
+            updateExamTimer();
+            examTimerId = window.setInterval(updateExamTimer, 250);
             renderExamQuestion();
+        }
+
+        function stopExamTimer() {
+            if (examTimerId !== null) {
+                window.clearInterval(examTimerId);
+                examTimerId = null;
+            }
+        }
+
+        function updateExamTimer() {
+            if (!examInProgress) return;
+
+            const remainingMs = Math.max(0, examDeadline - Date.now());
+            const remainingSeconds = Math.ceil(remainingMs / 1000);
+            const minutes = Math.floor(remainingSeconds / 60);
+            const seconds = remainingSeconds % 60;
+            document.getElementById('exam-timer').textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            const timerBox = document.getElementById('exam-timer-box');
+            if (remainingSeconds <= 20) {
+                timerBox.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-lg border border-rose-500 bg-rose-950/70 text-rose-300 animate-pulse';
+            } else if (remainingSeconds <= 60) {
+                timerBox.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-lg border border-amber-500 bg-amber-950/60 text-amber-300';
+            } else {
+                timerBox.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-lg border border-emerald-700 bg-emerald-950/50 text-emerald-300';
+            }
+
+            if (remainingMs === 0) finishExamByTimeout();
+        }
+
+        function finishExamByTimeout() {
+            if (!examInProgress) return;
+
+            stopExamTimer();
+            for (let index = currentExamIndex; index < examQuestions.length; index++) {
+                const dish = examQuestions[index];
+                examUserAnswers.push({
+                    dish: dish,
+                    userSelections: [],
+                    selectedAllergensOnly: [],
+                    trueAllergens: [...dish.allergens],
+                    falsePositives: [],
+                    missedAllergens: [...dish.allergens],
+                    isUserNone: false,
+                    isTrueNone: dish.allergens.length === 0,
+                    isUserVegan: false,
+                    isTrueVegan: dish.vegan,
+                    isUserVeg: false,
+                    isTrueVeg: dish.veg,
+                    isCorrect: false,
+                    timedOut: true
+                });
+            }
+            currentExamIndex = examQuestions.length;
+            finishExam(true);
         }
 
         function renderExamQuestion() {
@@ -809,6 +879,7 @@
         }
 
         function submitExamAnswer() {
+            if (!examInProgress) return;
             const currentDish = examQuestions[currentExamIndex];
             
             // Gather selected allergens
@@ -868,7 +939,8 @@
             }
         }
 
-        function finishExam() {
+        function finishExam(timedOut = false) {
+            stopExamTimer();
             examInProgress = false;
             document.getElementById('exam-active').classList.add('hidden');
             document.getElementById('exam-results').classList.remove('hidden');
@@ -896,6 +968,11 @@
                 msgEl.textContent = "Es importante repasar la carta en la sección Explorador para garantizar la máxima seguridad alimentaria.";
             }
 
+            if (timedOut) {
+                titleEl.textContent = "Tiempo Finalizado";
+                msgEl.textContent = "Han terminado los 6 minutos. Las preguntas que quedaban sin confirmar se han contabilizado como no respondidas.";
+            }
+
             // Render Detailed Breakdown
             const list = document.getElementById('exam-breakdown-list');
             list.innerHTML = '';
@@ -917,7 +994,7 @@
                     <div class="flex items-center justify-between font-bold">
                         <span class="text-slate-200 text-sm">Plato ${idx + 1}: ${escapeHtml(ans.dish.name)}</span>
                         <span class="${ans.isCorrect ? 'text-emerald-400' : 'text-rose-400'}">
-                            ${ans.isCorrect ? '<i class="fa-solid fa-check mr-1"></i> Correcto' : '<i class="fa-solid fa-xmark mr-1"></i> Fallo'}
+                            ${ans.isCorrect ? '<i class="fa-solid fa-check mr-1"></i> Correcto' : ans.timedOut ? '<i class="fa-solid fa-clock mr-1"></i> Sin responder' : '<i class="fa-solid fa-xmark mr-1"></i> Fallo'}
                         </span>
                     </div>
                     <div class="text-slate-300">Tu selección: <strong class="${ans.isCorrect ? 'text-emerald-300' : 'text-rose-300'}">${escapeHtml(selectedStr)}</strong></div>
@@ -1185,7 +1262,7 @@
                 setCategories();loadPracticeGrid();practiceStats={correct:0,incorrect:0};
                 document.getElementById('practice-score-correct').textContent='0';
                 document.getElementById('practice-score-incorrect').textContent='0';
-                currentPracticeDish=null;examInProgress=false;examQuestions=[];examUserAnswers=[];examScore=0;currentExamIndex=0;
+                currentPracticeDish=null;stopExamTimer();examInProgress=false;examQuestions=[];examUserAnswers=[];examScore=0;currentExamIndex=0;
                 document.getElementById('exam-intro').classList.remove('hidden');
                 document.getElementById('exam-active').classList.add('hidden');
                 document.getElementById('exam-results').classList.add('hidden');

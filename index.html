@@ -260,7 +260,7 @@
                     </div>
                     <div class="flex items-center space-x-2">
                         <i class="fa-solid fa-clock text-amber-400"></i>
-                        <span>Dispones de 6 minutos. El examen se entregará automáticamente al finalizar el tiempo.</span>
+                        <span>Dispones de 4 minutos y 30 segundos. El examen se entregará automáticamente al finalizar el tiempo.</span>
                     </div>
                     <div class="flex items-center space-x-2">
                         <i class="fa-solid fa-check text-emerald-400"></i>
@@ -287,7 +287,7 @@
                     </span>
                     <div id="exam-timer-box" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg border border-emerald-700 bg-emerald-950/50 text-emerald-300" role="timer" aria-live="polite">
                         <i class="fa-solid fa-clock"></i>
-                        <span id="exam-timer" class="text-lg font-black tabular-nums">06:00</span>
+                        <span id="exam-timer" class="text-lg font-black tabular-nums">04:30</span>
                     </div>
                     <div class="w-full sm:w-1/3 bg-slate-800 h-2.5 rounded-full overflow-hidden border border-slate-700">
                         <div id="exam-progress-bar" class="bg-sky-500 h-full w-10 transition-all duration-300"></div>
@@ -466,7 +466,7 @@
         let currentExamIndex = 0;
         let examUserAnswers = [];
         let examScore = 0;
-        const EXAM_DURATION_MS = 6 * 60 * 1000;
+        const EXAM_DURATION_MS = (4 * 60 + 30) * 1000;
         let examDeadline = 0;
         let examTimerId = null;
 
@@ -970,7 +970,7 @@
 
             if (timedOut) {
                 titleEl.textContent = "Tiempo Finalizado";
-                msgEl.textContent = "Han terminado los 6 minutos. Las preguntas que quedaban sin confirmar se han contabilizado como no respondidas.";
+                msgEl.textContent = "Han terminado los 4 minutos y 30 segundos. Las preguntas que quedaban sin confirmar se han contabilizado como no respondidas.";
             }
 
             // Render Detailed Breakdown

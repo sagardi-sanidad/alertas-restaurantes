@@ -272,7 +272,14 @@
                     </div>
                 </div>
 
-                <button onclick="startExam()" class="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold px-8 py-3.5 rounded-xl shadow-lg shadow-emerald-500/20 transition-all text-base inline-flex items-center justify-center space-x-2">
+                <div class="max-w-md mx-auto text-left space-y-2">
+                    <label for="exam-candidate-name" class="block text-sm font-bold text-white">Nombre y apellidos</label>
+                    <input type="text" id="exam-candidate-name" maxlength="80" autocomplete="name" oninput="updateExamStartButton()" onkeydown="if(event.key === 'Enter' && !document.getElementById('btn-start-exam').disabled) startExam()" placeholder="Escribe tu nombre para comenzar" class="w-full bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-sm rounded-xl px-4 py-3 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                    <p id="exam-name-error" class="hidden text-xs text-rose-300">Escribe tu nombre y apellidos antes de comenzar.</p>
+                    <p class="text-xs text-slate-500">Se guardarán el local, la fecha, la hora, el nombre, la puntuación y los fallos para el seguimiento de la formación.</p>
+                </div>
+
+                <button id="btn-start-exam" onclick="startExam()" disabled class="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed disabled:shadow-none text-slate-950 font-bold px-8 py-3.5 rounded-xl shadow-lg shadow-emerald-500/20 transition-all text-base inline-flex items-center justify-center space-x-2">
                     <i class="fa-solid fa-play"></i>
                     <span>Comenzar Examen de Iconos</span>
                 </button>
@@ -336,6 +343,11 @@
                     <div class="inline-flex items-center justify-center px-6 py-3 bg-slate-900/90 rounded-2xl border border-slate-700 space-x-3 text-lg">
                         <span class="text-slate-400 text-sm">Puntuación Final:</span>
                         <span id="exam-final-score" class="text-3xl font-black text-emerald-400">0 / 10</span>
+                    </div>
+                    <div id="exam-save-box" class="max-w-lg mx-auto flex flex-wrap items-center justify-center gap-3 px-4 py-3 rounded-xl border border-sky-800/60 bg-sky-950/30 text-xs text-sky-200" aria-live="polite">
+                        <i id="exam-save-icon" class="fa-solid fa-spinner fa-spin"></i>
+                        <span id="exam-save-status">Guardando el resultado en la hoja de seguimiento…</span>
+                        <button id="btn-retry-exam-save" onclick="submitExamResult()" class="hidden px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold">Reintentar</button>
                     </div>
                 </div>
 
@@ -469,6 +481,9 @@
         const EXAM_DURATION_MS = 4 * 60 * 1000;
         let examDeadline = 0;
         let examTimerId = null;
+        let examCandidateName = '';
+        let examResultId = '';
+        let examResultSubmitted = false;
 
         // Explorer State
         let activeDietFilter = null; // 'vegan' | 'veg' | null
@@ -535,6 +550,9 @@
 
             if (tabId === 'explorer') {
                 renderExplorerGrid();
+            }
+            if (tabId === 'exam' && !examInProgress) {
+                window.setTimeout(() => document.getElementById('exam-candidate-name').focus(), 0);
             }
         }
 
@@ -739,7 +757,18 @@
         }
 
         function startExam() {
+            const nameInput = document.getElementById('exam-candidate-name');
+            const candidateName = nameInput.value.trim().replace(/\s+/g, ' ');
+            if (candidateName.length < 2) {
+                document.getElementById('exam-name-error').classList.remove('hidden');
+                nameInput.focus();
+                return;
+            }
+
             stopExamTimer();
+            examCandidateName = candidateName;
+            examResultId = createExamResultId();
+            examResultSubmitted = false;
             examInProgress = true;
             document.getElementById('exam-intro').classList.add('hidden');
             document.getElementById('exam-results').classList.add('hidden');
@@ -758,6 +787,20 @@
             updateExamTimer();
             examTimerId = window.setInterval(updateExamTimer, 250);
             renderExamQuestion();
+        }
+
+        function updateExamStartButton() {
+            const nameInput = document.getElementById('exam-candidate-name');
+            const hasName = nameInput.value.trim().length >= 2;
+            document.getElementById('btn-start-exam').disabled = !hasName;
+            if (hasName) document.getElementById('exam-name-error').classList.add('hidden');
+        }
+
+        function createExamResultId() {
+            if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+                return window.crypto.randomUUID();
+            }
+            return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}_${Math.random().toString(36).slice(2)}`;
         }
 
         function stopExamTimer() {
@@ -1003,6 +1046,120 @@
                 `;
                 list.appendChild(card);
             });
+
+            submitExamResult();
+        }
+
+        function examSelectionText(answer) {
+            return answer.userSelections.map(value => {
+                if (value === 'NONE') return 'Libre de Alérgenos';
+                if (value === 'VEGAN') return 'Vegano';
+                if (value === 'VEG') return 'Vegetariano';
+                return value;
+            }).join(', ') || 'Sin respuesta';
+        }
+
+        function examCorrectText(answer) {
+            const allergens = answer.trueAllergens.length ? answer.trueAllergens.join(', ') : 'Libre de Alérgenos';
+            return `${allergens} | Vegano: ${answer.isTrueVegan ? 'Sí' : 'No'} | Vegetariano: ${answer.isTrueVeg ? 'Sí' : 'No'}`;
+        }
+
+        function examFailureReason(answer) {
+            if (answer.timedOut) return 'Tiempo agotado: pregunta sin responder';
+            const reasons = [];
+            if (answer.missedAllergens.length) reasons.push(`Faltan: ${answer.missedAllergens.join(', ')}`);
+            if (answer.falsePositives.length) reasons.push(`Marcados de más: ${answer.falsePositives.join(', ')}`);
+            if (answer.isUserNone !== answer.isTrueNone) reasons.push('La opción Libre de Alérgenos no coincide');
+            if (answer.isUserVegan !== answer.isTrueVegan) reasons.push('La opción Vegano no coincide');
+            if (answer.isUserVeg !== answer.isTrueVeg) reasons.push('La opción Vegetariano no coincide');
+            return reasons.join('. ') || 'Respuesta incorrecta';
+        }
+
+        function buildExamResultPayload() {
+            return {
+                id: examResultId,
+                restaurant: activeRestaurant ? activeRestaurant.name : '',
+                personName: examCandidateName,
+                score: examScore,
+                total: examQuestions.length,
+                failures: examUserAnswers.map((answer, index) => ({ answer, index }))
+                    .filter(item => !item.answer.isCorrect)
+                    .map(item => ({
+                        question: item.index + 1,
+                        dish: item.answer.dish.name,
+                        selected: examSelectionText(item.answer),
+                        correct: examCorrectText(item.answer),
+                        reason: examFailureReason(item.answer)
+                    }))
+            };
+        }
+
+        function resultsApiRequest(params) {
+            return new Promise((resolve, reject) => {
+                const callback = 'exam_cb_' + Math.random().toString(36).slice(2) + Date.now();
+                const script = document.createElement('script');
+                let done = false;
+                const timer = window.setTimeout(() => finish(new Error('La confirmación ha tardado demasiado.')), 15000);
+                function finish(error, result) {
+                    if (done) return;
+                    done = true;
+                    window.clearTimeout(timer);
+                    delete window[callback];
+                    script.remove();
+                    error ? reject(error) : resolve(result);
+                }
+                window[callback] = data => finish(null, data);
+                script.onerror = () => finish(new Error('No se pudo confirmar el guardado.'));
+                const url = new URL(EXAM_RESULTS_API_URL);
+                Object.entries({ ...params, callback, _: Date.now() }).forEach(([key, value]) => url.searchParams.set(key, value));
+                script.src = url.toString();
+                document.head.append(script);
+            });
+        }
+
+        async function submitExamResult() {
+            if (examResultSubmitted || !examResultId) return;
+            examResultSubmitted = true;
+
+            const saveBox = document.getElementById('exam-save-box');
+            const saveIcon = document.getElementById('exam-save-icon');
+            const saveStatus = document.getElementById('exam-save-status');
+            const retryButton = document.getElementById('btn-retry-exam-save');
+            saveBox.className = 'max-w-lg mx-auto flex flex-wrap items-center justify-center gap-3 px-4 py-3 rounded-xl border border-sky-800/60 bg-sky-950/30 text-xs text-sky-200';
+            saveIcon.className = 'fa-solid fa-spinner fa-spin';
+            saveStatus.textContent = 'Guardando el resultado en la hoja de seguimiento…';
+            retryButton.classList.add('hidden');
+
+            try {
+                await fetch(EXAM_RESULTS_API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    cache: 'no-store',
+                    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+                    body: JSON.stringify(buildExamResultPayload())
+                });
+
+                let confirmed = false;
+                for (const delay of [1200, 2200, 3500]) {
+                    await new Promise(resolve => window.setTimeout(resolve, delay));
+                    const response = await resultsApiRequest({ action: 'exam-status', id: examResultId });
+                    if (response.ok && response.found) {
+                        confirmed = true;
+                        break;
+                    }
+                }
+                if (!confirmed) throw new Error('El resultado no aparece todavía en la hoja.');
+
+                saveBox.className = 'max-w-lg mx-auto flex flex-wrap items-center justify-center gap-3 px-4 py-3 rounded-xl border border-emerald-800/60 bg-emerald-950/30 text-xs text-emerald-200';
+                saveIcon.className = 'fa-solid fa-circle-check';
+                saveStatus.textContent = 'Resultado guardado correctamente.';
+            } catch (error) {
+                examResultSubmitted = false;
+                saveBox.className = 'max-w-lg mx-auto flex flex-wrap items-center justify-center gap-3 px-4 py-3 rounded-xl border border-rose-800/60 bg-rose-950/30 text-xs text-rose-200';
+                saveIcon.className = 'fa-solid fa-triangle-exclamation';
+                saveStatus.textContent = 'No se ha podido guardar el resultado. Comprueba la conexión y reintenta.';
+                retryButton.classList.remove('hidden');
+            }
         }
 
         function toggleDietFilter(type) {
@@ -1186,6 +1343,7 @@
 
 
         const API_URL = 'https://script.google.com/macros/s/AKfycbxLeviVXPh_u3_sjyBZWwc2uSpQlN1wDpcCib18U9MY0VvSU_vSyiolzoFVUdf8D-7x/exec';
+        const EXAM_RESULTS_API_URL = 'https://script.google.com/macros/s/AKfycbw3FMB8wr_pFLp0OF5IHZ7YBRfZpazxLwJzQSMrEZPgaVOrdXHbvJipHjf_i7Lsyb0JHQ/exec';
         let catalogData = [], activeRestaurant = null, loadSequence = 0;
         const columnAllergens = ['Gluten','Crustáceos','Huevo','Pescado','Cacahuetes','Soja','Leche','Frutos con cáscara','Apio','Mostaza','Sésamo','Ajo','Cerdo','Sulfitos','Altramuces','Moluscos'];
         function apiRequest(params) {
@@ -1262,7 +1420,8 @@
                 setCategories();loadPracticeGrid();practiceStats={correct:0,incorrect:0};
                 document.getElementById('practice-score-correct').textContent='0';
                 document.getElementById('practice-score-incorrect').textContent='0';
-                currentPracticeDish=null;stopExamTimer();examInProgress=false;examQuestions=[];examUserAnswers=[];examScore=0;currentExamIndex=0;
+                currentPracticeDish=null;stopExamTimer();examInProgress=false;examQuestions=[];examUserAnswers=[];examScore=0;currentExamIndex=0;examCandidateName='';examResultId='';examResultSubmitted=false;
+                document.getElementById('exam-candidate-name').value='';updateExamStartButton();
                 document.getElementById('exam-intro').classList.remove('hidden');
                 document.getElementById('exam-active').classList.add('hidden');
                 document.getElementById('exam-results').classList.add('hidden');
